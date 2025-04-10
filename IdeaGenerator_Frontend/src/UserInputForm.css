@@ -1,0 +1,197 @@
+.user-input-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #fffde7 0%, #fff59d 100%);
+    padding: 20px;
+  }
+  
+  .progress-bar {
+    width: 100%;
+    max-width: 800px;
+    height: 8px;
+    background-color: #000000;
+    border-radius: 4px;
+    margin-bottom: 40px;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .progress-fill {
+    height: 100%;
+    background-color: #ffeb3b;
+    transition: width 0.3s ease;
+  }
+  
+  .step-indicator {
+    font-size: 16px;
+    font-weight: bold;
+    color: #000;
+    margin-bottom: 20px;
+  }
+  
+  .input-form-content {
+    max-width: 800px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 30px;
+  }
+  
+  .input-form-title {
+    font-size: 24px;
+    font-weight: bold;
+    color: #000;
+    background-color: #ffeb3b;
+    padding: 12px 24px;
+    border-radius: 4px;
+    box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    border: 2px solid #000;
+  }
+  
+  .options-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 15px;
+    width: 100%;
+  }
+  
+  .option-button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 15px;
+    background-color: white;
+    border: 2px solid #000;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.2);
+  }
+  
+  .option-button:hover {
+    border-color: #ffeb3b;
+    background-color: #fff6a9;
+    transform: translateY(-2px);
+  }
+  
+  .option-button.selected {
+    border: 2px solid #000000;
+    background-color: rgba(255, 235, 59, 0.1);
+  }
+  
+  .option-icon {
+    font-size: 18px;
+  }
+  
+  .option-label {
+    font-size: 14px;
+    font-weight: 500;
+  }
+  
+  .input-form-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 20px;
+  }
+  
+  .next-button {
+    padding: 10px 30px;
+    background-color: #ffeb3b;
+    border: 2px solid #000000;
+    box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .next-button:hover {
+    background-color: #fdd835;
+    transform: translateY(-2px);
+  }
+  
+  .next-button:disabled {
+    background-color: #e0e0e0;
+    cursor: not-allowed;
+    transform: none;
+  }
+  
+  .back-button {
+    padding: 10px 30px;
+    background-color: white;
+    border: 2px solid #000000;
+    box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .back-button:hover {
+    background-color: #f5f5f5;
+    transform: translateY(-2px);
+  }
+  .sub-title {
+    font-size: 18px;
+    font-weight: bold;
+    color: #000;
+    background-color: #fff59d; /* Light yellow background */
+    padding: 8px 16px;
+    border-radius: 4px;
+    box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.2);
+    text-align: center;
+    border: 2px solid #000;
+    margin: 20px auto 10px auto; /* Center horizontally with auto margins */
+    display: block; /* Ensure it behaves as a block element */
+    width: fit-content; /* Adjust width to fit content */
+  }
+  
+  .tech-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center the sub-title and options grid */
+    width: 100%;
+    max-width: 800px; /* Match the max-width of the options grid */
+    margin: 0 auto; /* Center the section horizontally */
+  }
+  
+  .options-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 15px;
+    width: 100%;
+  }
+  
+  
+  /* Media queries for responsiveness */
+  @media (max-width: 768px) {
+    .options-grid {
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    }
+    
+    .input-form-title {
+      font-size: 20px;
+      padding: 10px 16px;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .options-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .input-form-actions {
+      width: 100%;
+      justify-content: space-between;
+    }
+    
+    .next-button, .back-button {
+      padding: 10px 20px;
+    }
+  }
+  

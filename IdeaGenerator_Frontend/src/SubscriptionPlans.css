@@ -1,0 +1,128 @@
+/* SubscriptionPlans.css */
+.subscription-plans {
+    padding: 4rem 2rem;
+    text-align: center;
+    background-color: white;
+    position: relative;
+  }
+  
+  .section-title-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 3rem;
+  }
+  
+  .section-title {
+    background-color: #FEF600;
+    color: black;
+    padding: 0.75rem 1.5rem;
+    border: 2px solid #000000;
+    box-shadow: 3px 3px 5px #FF0090;
+    border-radius: 4px;
+    font-weight: bold;
+    display: inline-block;
+    transition: all 0.3s ease;
+  }
+  
+  .plans-container {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin: 0 auto;
+    max-width: 1200px;
+  }
+  
+  .plan-card {
+    background-color: white;
+    border-radius: 8px;
+    width: 300px;
+    border: 1px solid #e0e0e0;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .plan-card.popular {
+    border: 2px solid #FEF600;
+    box-shadow: 0 8px 16px rgba(254, 246, 0, 0.2);
+  }
+  
+  .plan-label {
+    background-color: #FF0090;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    padding: 4px 0;
+    width: 100%;
+  }
+  
+  .plan-card.popular .plan-label {
+    background-color: #FEF600;
+    color: black;
+  }
+  
+  .plan-name {
+    font-size: 18px;
+    font-weight: bold;
+    margin: 20px 15px;
+    min-height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .plan-price {
+    font-size: 40px;
+    font-weight: bold;
+    margin: 10px 0 5px;
+  }
+  
+  .plan-duration {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 20px;
+  }
+  
+  .plan-features {
+    margin: 20px 15px;
+    flex-grow: 1;
+  }
+  
+  .plan-features p {
+    color: #444;
+    line-height: 1.5;
+  }
+  
+  .subscribe-btn {
+    background-color: #FEF600;
+    color: black;
+    width: 80%;
+    margin: 20px auto;
+    padding: 10px 0;
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  
+  .subscribe-btn:hover {
+    background-color: #FFE100;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  @media (max-width: 768px) {
+    .plans-container {
+      flex-direction: column;
+      align-items: center;
+    }
+    
+    .plan-card {
+      width: 100%;
+      max-width: 300px;
+      margin-bottom: 2rem;
+    }
+  }
