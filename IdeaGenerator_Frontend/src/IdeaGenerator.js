@@ -144,7 +144,7 @@ const IdeaGenerator = () => {
 
       <div className="form-row">
         <div className="form-group">
-          <h3>Select the Technology</h3>
+          <h3>Select the Appropriate Technology</h3>
           <div className="select-container">
             <select value={formData.technologies} onChange={e => handleInputChange('technologies', e.target.value)}>
               <option value="" disabled>Select technology</option>
