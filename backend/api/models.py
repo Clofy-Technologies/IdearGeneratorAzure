@@ -25,3 +25,23 @@ class user_selection(models.Model):
 
     class Meta:
         db_table = 'user_selection'
+
+    
+class IdeaLog(models.Model):
+    focus = models.CharField(max_length=100)
+    main_industry = models.CharField(max_length=100)
+    subdomain = models.CharField(max_length=100)
+    technologies = models.CharField(max_length=100)
+    business_model = models.CharField(max_length=100)
+    target_audience = models.CharField(max_length=100)
+    market_segment = models.CharField(max_length=100)
+
+    generated_ideas = models.TextField()  # Save raw text or JSON string of ideas
+    selected_problem = models.TextField(blank=True, null=True)
+    solution = models.TextField(blank=True, null=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'idea_log'
+
