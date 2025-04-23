@@ -1,0 +1,35 @@
+.pricing-page{
+    min-height: 100vh;
+    background: linear-gradient(135deg, #ffffff 0%, #FFFFFF 100%);
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+}
+
+
+.pricing-page::before {
+    content: "";
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+      135deg,
+      rgba(254, 246, 0, 0.6),
+      rgba(255, 255, 255, 0.7),
+      rgba(254, 246, 0, 0.6)
+    );
+    z-index: 0;
+    animation: gradientAnimation 15s ease-in-out infinite;
+    opacity: 0.8;
+  }
+  
+  .pricing-page > * {
+    position: relative;
+    z-index: 2;
+  }
+  
