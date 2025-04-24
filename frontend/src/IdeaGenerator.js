@@ -1,5 +1,6 @@
 // Combined IdeaGenerator.js
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import './IdeaGenerator.css';
 
 const steps = [
@@ -12,9 +13,9 @@ const steps = [
 
 const IdeaGenerator = () => {
   const [currentView, setCurrentView] = useState('form');
-  const [selectedProblem, setSelectedProblem] = useState(null);
   const [isGeneratingIdeas, setIsGeneratingIdeas] = useState(false);
   const [generatedIdeas, setGeneratedIdeas] = useState([]);
+  const [selectedIdea, setSelectedIdea] = useState(null);
 
   const [formData, setFormData] = useState({
     focus: '',
@@ -25,6 +26,10 @@ const IdeaGenerator = () => {
     target_audience: '',
     market_segment: ''
   });
+
+  // Gemini API key - should be stored in environment variables in production
+  const GEMINI_API_KEY = 'AIzaSyAUYr1XUV6xqmIzw1oBalNPdW3iP9sJSf4';
+  const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent';
 
   const [focusOptions, setFocusOptions] = useState([]);
   const [industries, setIndustries] = useState([]);
@@ -83,22 +88,128 @@ const IdeaGenerator = () => {
 
   const isFormValid = () => formData.focus && formData.main_industry && formData.technologies;
 
-  const handleGenerateIdeas = (count) => {
+  const handleGenerateIdeas = async (count) => {
     if (!isFormValid()) return;
 
     setIsGeneratingIdeas(true);
+    setSelectedIdea(null); // Reset selected solution
 
-    fetch('http://localhost:8000/api/save_selection/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData)
-    })
-      .then(res => res.json())
-      .then(data => {
-        setGeneratedIdeas(data.ideas || []);
-        setCurrentView('results');
-        setIsGeneratingIdeas(false);
+    const prompt = `Generate ${count} related problems Based on the following inputs:
+    - Focus: ${formData.focus}
+    - Main Industry: ${formData.main_industry}
+    - Subdomain: ${formData.subdomain}
+    - Technologies: ${formData.technologies}
+    - Business Model: ${formData.business_model}
+    - Target Audience: ${formData.target_audience}
+    - Market Segment: ${formData.market_segment} 
+    
+    Provide the problems in a numbered list format. No need for any explanation.`;
+
+    try {
+      // Using Gemini API
+      const response = await axios.post(
+        `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
+        {
+          contents: [
+            {
+              role: "user",
+              parts: [
+                { text: prompt }
+              ]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 500,
+          }
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      // Extract text from Gemini response
+      const rawText = response.data.candidates[0].content.parts[0].text.trim();
+
+      const ideas = rawText
+        .split(/\n(?=\d+\.\s)/) // split by numbered lines
+        .map((ideaText, index) => ({
+          title: `Idea ${index + 1}`,
+          description: ideaText.replace(/^\d+\.\s*/, ''), // remove "1. "
+          details: [],
+        }));
+
+      setGeneratedIdeas(ideas);
+      setCurrentView('results');
+
+      await fetch('http://localhost:8000/api/save_full_idea/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          generated_ideas: ideas.map(i => i.description).join('\n\n'),
+        })
       });
+      
+    } catch (error) {
+      console.error('Error generating ideas:', error);
+      alert('Failed to generate ideas. Please try again.');
+    } finally {
+      setIsGeneratingIdeas(false);
+    }
+  };
+
+  const handleGenerateSolution = async (problemText) => {
+    setIsGeneratingIdeas(true); // reuse loading state
+    try {
+      const prompt = `Provide a detailed startup solution to solve the following problem:\n\n"${problemText}"\n\nInclude proposed product or service, target audience, core features, technologies used, and possible revenue models.`;
+  
+      // Using Gemini API
+      const response = await axios.post(
+        `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
+        {
+          contents: [
+            {
+              role: "user",
+              parts: [
+                { text: prompt }
+              ]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 700,
+          }
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+  
+      // Extract text from Gemini response
+      const solution = response.data.candidates[0].content.parts[0].text.trim();
+      setSelectedIdea({ problem: problemText, solution });
+
+      await fetch('http://localhost:8000/api/save_full_idea/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          generated_ideas: generatedIdeas.map(i => i.description).join('\n\n'),
+          selected_problem: problemText,
+          solution: solution
+        })
+      });
+    } catch (error) {
+      console.error('Error generating solution:', error);
+      alert('Failed to generate a solution. Please try again.');
+    } finally {
+      setIsGeneratingIdeas(false);
+    }
   };
 
   const renderFormInputs = () => (
@@ -253,21 +364,39 @@ const IdeaGenerator = () => {
 
   const renderIdeasPanel = () => (
     <div className="ideas-panel">
-      {generatedIdeas.length > 0 ? (
+      {generatedIdeas.length > 0 && !selectedIdea ? (
         <div className="idea-details">
           {generatedIdeas.map((idea, index) => (
-            <div key={index} className="idea-detail-card">
+            <div key={index} className="idea-detail-card clickable" onClick={() => handleGenerateSolution(idea.description)}>
               <h3>{index + 1}. {idea.title}</h3>
               <p>{idea.description}</p>
-              <ul>{idea.details.map((d, i) => <li key={i}>{d}</li>)}</ul>
             </div>
           ))}
         </div>
-      ) : (
+      ) : generatedIdeas.length === 0 ? (
         <div className="empty-state">
           <div className="empty-state-icon">💡</div>
           <h3>Ready to Generate Ideas</h3>
           <p>Fill out the form and click "Generate Ideas" to get started.</p>
+        </div>
+      ) : null}
+
+      {selectedIdea && (
+        <div className="solution-container">
+          <div className="solution-header">
+            <h3>Solution for:</h3>
+            <p><strong>{selectedIdea.problem}</strong></p>
+            <button 
+              className="back-button" 
+              onClick={() => setSelectedIdea(null)}
+            >
+              ← Back to Ideas
+            </button>
+          </div>
+          <div className="solution-card">
+            <h4>Suggested Solution:</h4>
+            <p>{selectedIdea.solution}</p>
+          </div>
         </div>
       )}
     </div>
