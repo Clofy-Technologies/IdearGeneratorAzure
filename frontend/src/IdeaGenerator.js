@@ -1,5 +1,4 @@
-// Combined IdeaGenerator.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import './IdeaGenerator.css';
 
@@ -16,6 +15,8 @@ const IdeaGenerator = () => {
   const [isGeneratingIdeas, setIsGeneratingIdeas] = useState(false);
   const [generatedIdeas, setGeneratedIdeas] = useState([]);
   const [selectedIdea, setSelectedIdea] = useState(null);
+  const [isGeneratingSolution, setIsGeneratingSolution] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     focus: '',
@@ -27,10 +28,6 @@ const IdeaGenerator = () => {
     market_segment: ''
   });
 
-  // Gemini API key - should be stored in environment variables in production
-  const GEMINI_API_KEY = 'AIzaSyAUYr1XUV6xqmIzw1oBalNPdW3iP9sJSf4';
-  const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent';
-
   const [focusOptions, setFocusOptions] = useState([]);
   const [industries, setIndustries] = useState([]);
   const [options, setOptions] = useState({
@@ -41,157 +38,261 @@ const IdeaGenerator = () => {
     market_segment: []
   });
 
+  // Fetch initial form options from Django backend
   useEffect(() => {
-    fetch('http://localhost:8000/api/industries/')
-      .then(res => res.json())
-      .then(data => setIndustries(data.industries));
-
-    fetch('http://localhost:8000/api/focus-options/')
-      .then(res => res.json())
-      .then(data => setFocusOptions(data.focus_options));
+    const fetchData = async () => {
+      try {
+        const [industriesRes, focusRes] = await Promise.all([
+          fetch('http://localhost:8000/api/industries/'),
+          fetch('http://localhost:8000/api/focus-options/'),
+        ]);
+        if (!industriesRes.ok || !focusRes.ok) throw new Error('Failed to fetch options');
+        
+        const industriesData = await industriesRes.json();
+        const focusData = await focusRes.json();
+        
+        setIndustries(industriesData.industries || []);
+        setFocusOptions(focusData.focus_options || []);
+      } catch (err) {
+        console.error('Error fetching initial data:', err);
+        alert('Failed to load form options. Please refresh.');
+      }
+    };
+    fetchData();
   }, []);
 
+  // Fetch category options based on main_industry
   useEffect(() => {
     if (!formData.main_industry) return;
 
+    let isCancelled = false;
     const fetchCategories = async () => {
-      const updatedOptions = {};
+      const updatedOptions = {...options};
+      
       for (const category of steps) {
         try {
-          const res = await fetch(`http://localhost:8000/api/industry/${formData.main_industry}/${category}/`);
+          const res = await fetch(
+            `http://localhost:8000/api/industry/${formData.main_industry}/${category}/`
+          );
+          if (!res.ok) throw new Error(`Failed to fetch ${category}`);
           const data = await res.json();
+          if (isCancelled) return;
           updatedOptions[category] = data[category] || [];
         } catch (err) {
           console.error(`Error fetching ${category}:`, err);
           updatedOptions[category] = [];
         }
       }
-      setOptions(updatedOptions);
+      if (!isCancelled) setOptions(updatedOptions);
     };
 
     fetchCategories();
+    return () => {
+      isCancelled = true;
+    };
   }, [formData.main_industry]);
 
-  const handleInputChange = (field, value) => {
-    setFormData(prev => ({
+  // Handle form input changes
+  const handleInputChange = useCallback((field, value) => {
+    setFormData((prev) => ({
       ...prev,
       [field]: value,
-      ...(field === 'main_industry' ? {
-        subdomain: '',
-        technologies: '',
-        business_model: '',
-        target_audience: '',
-        market_segment: ''
-      } : {})
+      ...(field === 'main_industry'
+        ? {
+            subdomain: '',
+            technologies: '',
+            business_model: '',
+            target_audience: '',
+            market_segment: '',
+          }
+        : {}),
     }));
+  }, []);
+
+  // Validate form
+  const isFormValid = useCallback(
+    () => formData.focus && formData.main_industry && formData.technologies,
+    [formData]
+  );
+
+  // Retry logic for API calls
+  const retry = async (fn, retries = 3, delay = 1000) => {
+    for (let i = 0; i < retries; i++) {
+      try {
+        return await fn();
+      } catch (err) {
+        if (i === retries - 1) throw err;
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
   };
 
-  const isFormValid = () => formData.focus && formData.main_industry && formData.technologies;
-
+  // Generate ideas via Django backend
   const handleGenerateIdeas = async (count) => {
-    if (!isFormValid()) return;
-
-    setIsGeneratingIdeas(true);
-    setSelectedIdea(null); // Reset selected solution
-
-    const prompt = `Generate ${count} related problems Based on the following inputs:
-    - Focus: ${formData.focus}
-    - Main Industry: ${formData.main_industry}
-    - Subdomain: ${formData.subdomain}
-    - Technologies: ${formData.technologies}
-    - Business Model: ${formData.business_model}
-    - Target Audience: ${formData.target_audience}
-    - Market Segment: ${formData.market_segment} 
+    // Validate form data before proceeding
+    if (!formData.focus || !formData.main_industry || !formData.technologies) {
+      alert('Please fill out all required fields.');
+      return;
+    }
     
-    Provide the problems in a numbered list format. No need for any explanation.`;
+    setIsGeneratingIdeas(true);
+    setSelectedIdea(null);
+
+    const prompt = `Generate exactly ${count} related problems based on the following inputs. Return only a numbered list (e.g., 1. Problem text) with no explanations or additional text:\n
+    - Focus: ${formData.focus}\n
+    - Main Industry: ${formData.main_industry}\n
+    - Subdomain: ${formData.subdomain || 'N/A'}\n
+    - Technologies: ${formData.technologies}\n
+    - Business Model: ${formData.business_model || 'N/A'}\n
+    - Target Audience: ${formData.target_audience || 'N/A'}\n
+    - Market Segment: ${formData.market_segment || 'N/A'}`;
+     
+    console.log("Payload being sent to API:", {
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a helpful assistant that generates startup problems based on user input.',
+        },
+        { role: 'user', content: prompt },
+      ],
+      max_tokens: 500,
+      temperature: 0.7,
+    });
 
     try {
-      // Using Gemini API
-      const response = await axios.post(
-        `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
-        {
-          contents: [
-            {
-              role: "user",
-              parts: [
-                { text: prompt }
-              ]
-            }
-          ],
-          generationConfig: {
+      const response = await retry(() =>
+        axios.post(
+          'http://localhost:8000/api/generate-ideas/',
+          {
+            messages: [
+              {
+                role: 'system',
+                content: 'You are a helpful assistant that generates startup problems based on user input.',
+              },
+              { role: 'user', content: prompt },
+            ],
+            max_tokens: 500,
             temperature: 0.7,
-            maxOutputTokens: 500,
-          }
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
           },
-        }
+          { headers: { 'Content-Type': 'application/json' } }
+        )
       );
 
-      // Extract text from Gemini response
-      const rawText = response.data.candidates[0].content.parts[0].text.trim();
+      const rawText = response.data.choices[0].message.content.trim();
+      let ideas = rawText.split(/\n(?=\d+\.\s)/);
+      if (ideas.length <= 1) {
+        ideas = rawText.split('\n').filter((line) => line.trim());
+      }
+      ideas = ideas.map((ideaText, index) => ({
+        title: `Idea ${index + 1}`,
+        description: ideaText.replace(/^\d+\.\s*|-/, '').trim(),
+        details: [],
+      }));
 
-      const ideas = rawText
-        .split(/\n(?=\d+\.\s)/) // split by numbered lines
-        .map((ideaText, index) => ({
-          title: `Idea ${index + 1}`,
-          description: ideaText.replace(/^\d+\.\s*/, ''), // remove "1. "
-          details: [],
-        }));
+      if (ideas.length !== count) {
+        console.warn(`Expected ${count} ideas, got ${ideas.length}`);
+      }
 
       setGeneratedIdeas(ideas);
       setCurrentView('results');
 
-      await fetch('http://localhost:8000/api/save_full_idea/', {
+      await fetch('http://localhost:8000/api/save_selection/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          generated_ideas: ideas.map(i => i.description).join('\n\n'),
-        })
+          generated_ideas: ideas.map((i) => i.description).join('\n\n'),
+        }),
       });
-      
     } catch (error) {
       console.error('Error generating ideas:', error);
-      alert('Failed to generate ideas. Please try again.');
+      const message =
+        error.response?.status === 429
+          ? 'Rate limit exceeded. Please try again later.'
+          : error.response?.status === 400
+          ? 'Invalid input. Please check your selections.'
+          : 'Failed to generate ideas. Please try again.';
+      alert(message);
     } finally {
       setIsGeneratingIdeas(false);
     }
   };
 
+  // Generate solution for a selected problem
   const handleGenerateSolution = async (problemText) => {
-    setIsGeneratingIdeas(true); // reuse loading state
+    setIsGeneratingSolution(true);
     try {
-      const prompt = `Provide a detailed startup solution to solve the following problem:\n\n"${problemText}"\n\nInclude proposed product or service, target audience, core features, technologies used, and possible revenue models.`;
-  
-      // Using Gemini API
-      const response = await axios.post(
-        `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
-        {
-          contents: [
-            {
-              role: "user",
-              parts: [
-                { text: prompt }
-              ]
-            }
-          ],
-          generationConfig: {
+      const prompt = `Provide a detailed startup solution to solve the following problem:\n\n"${problemText}"\n\n
+      Solutions Plan Structure:
+
+        1. Solutions Overview
+        Provide a concise summary of the solutions, including their alignment with the start-up's mission, target market, and value proposition.
+        Highlight how the solutions collectively address the problems and enhance market competitiveness. Limit to a 20-line paragraph.\n
+
+        2. Problem-Solution Mapping
+        List each problem and provide a targeted solution, explaining how it resolves the issue effectively and leverages the start-up's strengths.
+        Ensure solutions are innovative and practical. Limit to a 20-line paragraph.\n
+
+        3. Market Alignment
+        Analyze how the solutions fit within the market size, trends, and target audience needs.
+        Discuss how they differentiate the start-up from competitors. Limit to a 20-line paragraph.\n
+
+        4. Implementation Strategy
+        Outline the steps to implement the solutions, including timelines, resources, and prioritization.
+        Discuss scalability and integration with existing operations. Limit to a 20-line paragraph.\n
+
+        5. Technology Integration
+        Specify how the start-up's technologies (frontend, backend, database) will be used to support the solutions.
+        Explain how these choices enhance efficiency and competitive advantage. Limit to a 20-line paragraph.\n
+
+        6. Operational Impact
+        Detail how the solutions will affect day-to-day operations, including workflows, team responsibilities, and processes.
+        Highlight improvements in efficiency or customer experience. Limit to a 20-line paragraph.\n
+
+        7. Marketing and Outreach
+        Define how the solutions will be communicated to the target audience, including marketing campaigns and customer engagement tactics.
+        Highlight partnerships or channels to amplify reach. Limit to a 20-line paragraph.\n
+
+        8. Team Enablement
+        Describe the team roles and expertise needed to execute the solutions.
+        Explain how the current team's background supports implementation or if new hires are required. Limit to a 20-line paragraph.\n
+
+        9. Resource Requirements
+        Provide a breakdown of resources (e.g., budget, tools, personnel) needed to implement the solutions.
+        Include allocation across functions like development, marketing, and operations. Limit to a 20-line paragraph.\n
+
+        10. Financial Implications
+        Present the financial impact of the solutions, including costs, potential savings, and return on investment (ROI) over 3-5 years.
+        Consider risks and market scenarios. Limit to a 20-line paragraph.\n
+
+        11. Success Metrics
+        Define key performance indicators (KPIs) to measure the effectiveness of the solutions.
+        Include short-term and long-term objectives. Limit to a 15-line paragraph.\n
+
+        12. Risk Mitigation
+        Identify potential challenges in implementing the solutions (e.g., technical issues, market resistance) and propose mitigation strategies.
+        Ensure alignment with the start-up's goals. Limit to a 15-line paragraph.\n
+
+        13. Long-Term Vision
+        Outline how the solutions contribute to the start-up's long-term growth and sustainability.
+        Discuss potential for future innovation or market expansion. Limit to a 10-line paragraph.`;
+
+      const response = await retry(() =>
+        axios.post(
+          'http://localhost:8000/api/generate-solution/',
+          {
+            messages: [
+              { role: 'system', content: 'You are an AI startup mentor giving detailed startup solutions.' },
+              { role: 'user', content: prompt },
+            ],
+            max_tokens: 3000,
             temperature: 0.7,
-            maxOutputTokens: 700,
-          }
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
           },
-        }
+          { headers: { 'Content-Type': 'application/json' } }
+        )
       );
-  
-      // Extract text from Gemini response
-      const solution = response.data.candidates[0].content.parts[0].text.trim();
+
+      const solution = response.data.choices[0].message.content.trim();
       setSelectedIdea({ problem: problemText, solution });
 
       await fetch('http://localhost:8000/api/save_full_idea/', {
@@ -199,16 +300,22 @@ const IdeaGenerator = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          generated_ideas: generatedIdeas.map(i => i.description).join('\n\n'),
+          generated_ideas: generatedIdeas.map((i) => i.description).join('\n\n'),
           selected_problem: problemText,
-          solution: solution
-        })
+          solution,
+        }),
       });
     } catch (error) {
       console.error('Error generating solution:', error);
-      alert('Failed to generate a solution. Please try again.');
+      const message =
+        error.response?.status === 429
+          ? 'Rate limit exceeded. Please try again later.'
+          : error.response?.status === 400
+          ? 'Invalid input. Please check your selections.'
+          : 'Failed to generate a solution. Please try again.';
+      alert(message);
     } finally {
-      setIsGeneratingIdeas(false);
+      setIsGeneratingSolution(false);
     }
   };
 
@@ -216,7 +323,10 @@ const IdeaGenerator = () => {
     <div className="form-center-panel">
       <h3>What is your primary focus of your idea?</h3>
       <div className="select-container">
-        <select value={formData.focus} onChange={e => handleInputChange('focus', e.target.value)}>
+        <select 
+          value={formData.focus} 
+          onChange={e => handleInputChange('focus', e.target.value)}
+        >
           <option value="" disabled>Select focus</option>
           {focusOptions.map((option, index) => (
             <option key={index} value={option}>{option}</option>
@@ -229,7 +339,10 @@ const IdeaGenerator = () => {
         <div className="form-group">
           <h3>Select the Primary Industry</h3>
           <div className="select-container">
-            <select value={formData.main_industry} onChange={e => handleInputChange('main_industry', e.target.value)}>
+            <select 
+              value={formData.main_industry} 
+              onChange={e => handleInputChange('main_industry', e.target.value)}
+            >
               <option value="" disabled>Select industry</option>
               {industries.map((option, index) => (
                 <option key={index} value={option}>{option}</option>
@@ -242,7 +355,10 @@ const IdeaGenerator = () => {
         <div className="form-group">
           <h3>Select the Sub-Industry</h3>
           <div className="select-container">
-            <select value={formData.subdomain} onChange={e => handleInputChange('subdomain', e.target.value)}>
+            <select 
+              value={formData.subdomain} 
+              onChange={e => handleInputChange('subdomain', e.target.value)}
+            >
               <option value="" disabled>Select sub-industry</option>
               {options.subdomain.map((option, index) => (
                 <option key={index} value={option}>{option}</option>
@@ -257,7 +373,10 @@ const IdeaGenerator = () => {
         <div className="form-group">
           <h3>Select the Technology</h3>
           <div className="select-container">
-            <select value={formData.technologies} onChange={e => handleInputChange('technologies', e.target.value)}>
+            <select 
+              value={formData.technologies} 
+              onChange={e => handleInputChange('technologies', e.target.value)}
+            >
               <option value="" disabled>Select technology</option>
               {options.technologies.map((option, index) => (
                 <option key={index} value={option}>{option}</option>
@@ -270,7 +389,10 @@ const IdeaGenerator = () => {
         <div className="form-group">
           <h3>Select the Business Model</h3>
           <div className="select-container">
-            <select value={formData.business_model} onChange={e => handleInputChange('business_model', e.target.value)}>
+            <select 
+              value={formData.business_model} 
+              onChange={e => handleInputChange('business_model', e.target.value)}
+            >
               <option value="" disabled>Select business model</option>
               {options.business_model.map((option, index) => (
                 <option key={index} value={option}>{option}</option>
@@ -285,7 +407,10 @@ const IdeaGenerator = () => {
         <div className="form-group">
           <h3>Select the Target Audience</h3>
           <div className="select-container">
-            <select value={formData.target_audience} onChange={e => handleInputChange('target_audience', e.target.value)}>
+            <select 
+              value={formData.target_audience} 
+              onChange={e => handleInputChange('target_audience', e.target.value)}
+            >
               <option value="" disabled>Select target audience</option>
               {options.target_audience.map((option, index) => (
                 <option key={index} value={option}>{option}</option>
@@ -298,7 +423,10 @@ const IdeaGenerator = () => {
         <div className="form-group">
           <h3>Select the Market Segment</h3>
           <div className="select-container">
-            <select value={formData.market_segment} onChange={e => handleInputChange('market_segment', e.target.value)}>
+            <select 
+              value={formData.market_segment} 
+              onChange={e => handleInputChange('market_segment', e.target.value)}
+            >
               <option value="" disabled>Select market segment</option>
               {options.market_segment.map((option, index) => (
                 <option key={index} value={option}>{option}</option>
@@ -310,10 +438,18 @@ const IdeaGenerator = () => {
       </div>
 
       <div className="generate-buttons">
-        <button className={`generate-btn ${!isFormValid() ? 'disabled' : ''}`} onClick={() => handleGenerateIdeas(5)} disabled={!isFormValid() || isGeneratingIdeas}>
+        <button 
+          className={`generate-btn ${!isFormValid() ? 'disabled' : ''}`} 
+          onClick={() => handleGenerateIdeas(5)} 
+          disabled={!isFormValid() || isGeneratingIdeas}
+        >
           {isGeneratingIdeas ? 'Generating...' : 'Generate 5 Ideas'}
         </button>
-        <button className={`generate-btn ${!isFormValid() ? 'disabled' : ''}`} onClick={() => handleGenerateIdeas(10)} disabled={!isFormValid() || isGeneratingIdeas}>
+        <button 
+          className={`generate-btn ${!isFormValid() ? 'disabled' : ''}`} 
+          onClick={() => handleGenerateIdeas(10)} 
+          disabled={!isFormValid() || isGeneratingIdeas}
+        >
           {isGeneratingIdeas ? 'Generating...' : 'Generate 10 Ideas'}
         </button>
       </div>
@@ -367,7 +503,11 @@ const IdeaGenerator = () => {
       {generatedIdeas.length > 0 && !selectedIdea ? (
         <div className="idea-details">
           {generatedIdeas.map((idea, index) => (
-            <div key={index} className="idea-detail-card clickable" onClick={() => handleGenerateSolution(idea.description)}>
+            <div 
+              key={index} 
+              className="idea-detail-card clickable" 
+              onClick={() => handleGenerateSolution(idea.description)}
+            >
               <h3>{index + 1}. {idea.title}</h3>
               <p>{idea.description}</p>
             </div>
