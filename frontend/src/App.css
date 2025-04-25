@@ -75,7 +75,6 @@
 .subscription-plans {
   padding: 4rem 2rem;
   text-align: center;
-  background-color: #f9f9f9;
 }
 
 .section-title {
@@ -197,54 +196,223 @@
 }
 
 /* Footer */
-.footer {
+.footer-blog {
   background-color: #1a1a1a;
   color: white;
-  padding: 3rem 2rem 1rem;
+  padding: 4rem 2rem 2rem;
+  width: 100%;
+  text-align: center;
+  margin-top: 70px;
+  position: relative;
+  overflow: hidden;
 }
 
-.footer-container {
+.footer-top-border {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 6px;
+  background: linear-gradient(90deg, #FEF600, #FFD700, #FEF600);
+  z-index: 1;
+  box-shadow: 0 2px 10px rgba(254, 246, 0, 0.4);
+}
+
+.footer-blog::before {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, #FEF600, #FFD700, #FEF600);
+  z-index: 1;
+}
+
+.footer-container-blog {
   display: flex;
   justify-content: space-between;
   max-width: 1200px;
   margin: 0 auto;
+  position: relative;
+  z-index: 2;
 }
 
-.footer-column {
+.footer-column-blog {
   width: 30%;
+  padding: 0 15px;
+  transition: transform 0.3s ease;
 }
 
-.footer-column h4 {
+.footer-column-blog:hover {
+  transform: translateY(-5px);
+}
+
+.footer-column-blog h4 {
   margin-bottom: 1.5rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #FEF600;
+  position: relative;
+  display: inline-block;
+  padding-bottom: 8px;
 }
 
-.footer-column ul {
+.footer-column-blog h4::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: rgba(254, 246, 0, 0.5);
+  border-radius: 2px;
+}
+
+.footer-column-blog ul {
   list-style: none;
+  padding: 0;
 }
 
-.footer-column li {
-  margin-bottom: 0.5rem;
-  cursor: pointer;
+.footer-column-blog li {
+  margin-right: 20px;
+  transition: transform 0.2s ease;
+  display: inline-block;
+  
+}
+
+.footer-column-blog li:hover {
+  transform: translateX(5px);
+}
+
+/* Enhanced footer link styles */
+.footer-link {
+  color: white;
+  text-decoration: none;
+  display: inline-block;
+  padding: 4px 0;
+  position: relative;
+  transition: color 0.3s ease;
+}
+
+.footer-link:hover, 
+.footer-link:focus {
+  color: #FEF600;
+  outline: none;
+}
+
+.footer-link:focus-visible {
+  outline: 2px solid #FEF600;
+  outline-offset: 2px;
+}
+
+.footer-link-text {
+  position: relative;
+  display: inline-block;
+  
+}
+
+.footer-link-text::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 2px;
+  bottom: -4px;
+  left: 0;
+  background-color: #FEF600;
+  transition: width 0.3s ease;
+}
+
+.footer-column-blog li:hover .footer-link-text::after,
+.footer-link:focus .footer-link-text::after {
+  width: 100%;
 }
 
 .social-icons {
   display: flex;
-  gap: 1rem;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-top: 1rem;
 }
 
 .social-icon {
-  font-size: 1.5rem;
   cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.social-icon::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #FEF600;
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+  z-index: 0;
+}
+
+.social-icon svg {
+  position: relative;
+  z-index: 1;
+  width: 20px;
+  height: 20px;
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.social-icon:hover::before {
+  transform: translateY(0);
+}
+
+.social-icon:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(254, 246, 0, 0.4);
+}
+
+.social-icon:hover svg {
+  color: #000;
+  transform: scale(1.2);
 }
 
 .copyright {
   text-align: center;
-  color: #666;
+  color: #999;
   margin-top: 3rem;
-  padding-top: 1rem;
-  border-top: 1px solid #333;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.9rem;
+  position: relative;
+  z-index: 2;
 }
 
+@media (max-width: 768px) {
+  .footer-container-blog {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  
+  .footer-column-blog {
+    width: 100%;
+    margin-bottom: 2rem;
+  }
+  
+  .social-icons {
+    justify-content: center;
+  }
+}
 /* Add subtle background circles */
 .how-it-works::before {
   content: "";

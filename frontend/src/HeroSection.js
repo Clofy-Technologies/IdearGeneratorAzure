@@ -1,8 +1,10 @@
 import React, { useEffect, useRef } from 'react';
 import './HeroSection.css';
+import { useNavigate } from "react-router-dom";
 
 function HeroSection({ onLoginClick, onSignupClick, onGetStartedClick }) {
   const heroSectionRef = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const heroSection = heroSectionRef.current;
@@ -31,6 +33,11 @@ function HeroSection({ onLoginClick, onSignupClick, onGetStartedClick }) {
     <div className="hero-section" ref={heroSectionRef}>
       <div className="header-container">
         <div className="logo">YAIIA</div>
+        <div className="nav-links">
+          <button className="nav-btn" onClick={() => navigate("/blog")}>Blog</button>
+          <button className="nav-btn" onClick={() => navigate("/pricing")}>Pricing</button>
+          <button className="nav-btn">Idea Generator</button>
+        </div>
         <div className="auth-buttons">
           <button className="login-btn-hero" onClick={onLoginClick}>Login</button>
           <button className="signup-btn-hero" onClick={onSignupClick}>Signup</button>

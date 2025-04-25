@@ -1,7 +1,7 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from .models import industry_mapping, user_selection, main_industry
+from .models import industry_mapping, user_selection, main_industry ,IdeaLog
 from django.db import connection
 
 
@@ -83,3 +83,38 @@ def save_selection(request):
         return Response({"detail": f"Error saving selection: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     return Response({"message": "Selection saved successfully"})
+
+
+
+@api_view(['POST'])
+def save_full_idea_log(request):
+    try:
+        data = request.data
+
+        required_fields = [
+            "focus", "main_industry", "subdomain", "technologies",
+            "business_model", "target_audience", "market_segment",
+            "generated_ideas"
+        ]
+        for field in required_fields:
+            if field not in data:
+                return Response({"detail": f"Missing field: {field}"}, status=400)
+
+        log = IdeaLog.objects.create(
+            focus=data["focus"],
+            main_industry=data["main_industry"],
+            subdomain=data["subdomain"],
+            technologies=data["technologies"],
+            business_model=data["business_model"],
+            target_audience=data["target_audience"],
+            market_segment=data["market_segment"],
+            generated_ideas=data["generated_ideas"],  # store as JSON or joined text
+            selected_problem=data.get("selected_problem", ""),
+            solution=data.get("solution", "")
+        )
+
+        return Response({"message": "Idea log saved", "id": log.id}, status=201)
+
+    except Exception as e:
+        return Response({"detail": str(e)}, status=500)
+

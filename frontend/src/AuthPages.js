@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './AuthPages.css';
 import IdeaGenerator from './IdeaGenerator';
 import App from './App';
@@ -7,6 +8,12 @@ const AuthPages = ({ initialPage = 'signup', onClose }) => {
   const [currentPage, setCurrentPage] = useState(initialPage === 'signup' ? 'signup' : 'login');
   const [userCredentials, setUserCredentials] = useState(null);
   const [showIdeaGenerator, setShowIdeaGenerator] = useState(false);
+  const navigate = useNavigate();
+
+  const handleNavigation = (path) => {
+    onClose(); // Close the auth pages
+    navigate(path); // Navigate to the desired path
+  };
   
   const switchPage = () => {
     if (currentPage === 'signup') {
@@ -47,25 +54,19 @@ const AuthPages = ({ initialPage = 'signup', onClose }) => {
   return (
     <div className="auth-container">
       {showHeader && (
-        <div className="header-container-auth">
+        <div className="header-container">
           <div className="logo">YAIIA</div>
+          <div className="nav-links">
+            <button className="nav-btn" onClick={() => handleNavigation("/blog")}>Blog</button>
+            <button className="nav-btn" onClick={() => handleNavigation("/pricing")}>Pricing</button>
+            <button className="nav-btn" onClick={() => handleNavigation("/")}>Idea Generator</button>
+          </div>
           <div className="auth-buttons">
-            <button 
-              className={currentPage === 'login' ? "login-btn active" : "login-btn"} 
-              onClick={() => setCurrentPage('login')}
-            >
-              Login
-            </button>
-            <button 
-              className={currentPage === 'signup' ? "signup-btn active" : "signup-btn"} 
-              onClick={() => setCurrentPage('signup')}
-            >
-              Signup
-            </button>
+            <button className="login-btn-hero" onClick={() => setCurrentPage('login')}>Login</button>
+            <button className="signup-btn-hero" onClick={() => setCurrentPage('signup')}>Signup</button>
           </div>
         </div>
       )}
-      
       {renderContent()}
     </div>
   );
@@ -163,6 +164,15 @@ const SignupForm = ({ onSwitchPage, onComplete }) => {
 };
 
 const LoginForm = ({ onSwitchPage }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    // Here you would typically validate inputs and make an API call
+    console.log('Login attempt with:', { email, password });
+  };
+
   return (
     <div className="forms-container">
       <div className="auth-form">
@@ -184,24 +194,32 @@ const LoginForm = ({ onSwitchPage }) => {
           <div className="divider-line"></div>
         </div>
         
-        <input 
-          type="email" 
-          placeholder="Email" 
-          className="input-field"
-        />
-        
-        <input 
-          type="password" 
-          placeholder="Password" 
-          className="input-field"
-        />
-        
-        <button className="submit-button">
-          Login
-        </button>
+        <form onSubmit={handleSubmit}>
+          <input 
+            type="email" 
+            placeholder="Email" 
+            className="input-field"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          
+          <input 
+            type="password" 
+            placeholder="Password" 
+            className="input-field"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          
+          <button className="submit-button" type="submit">
+            Login
+          </button>
+        </form>
         
         <div className="forgot-password">
-          <button>
+          <button type="button">
             Forgot Password?
           </button>
         </div>
@@ -211,6 +229,7 @@ const LoginForm = ({ onSwitchPage }) => {
           <button 
             className="switch-button"
             onClick={onSwitchPage}
+            type="button"
           >
             Signup
           </button>

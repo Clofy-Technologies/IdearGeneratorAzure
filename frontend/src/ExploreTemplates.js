@@ -26,7 +26,7 @@ function ExploreTemplates() {
       
       <div className="templates-container">
         {templates.map((template, index) => (
-          <div className="template-card" key={index}>
+          <div className="template-card" key={index} style={{"--i": index}}>
             <div className="template-image">
               <img 
                 src={template.image} 
@@ -38,6 +38,7 @@ function ExploreTemplates() {
               />
             </div>
             <h3 className="template-title">{template.title}</h3>
+            <p className="template-description">{template.description}</p>
           </div>
         ))}
       </div>
